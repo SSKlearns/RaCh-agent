@@ -2,12 +2,8 @@ import streamlit as st
 import requests
 import streamlit as st
 import base64
-
-#then play it
-
 import requests
 
-# Simulate API endpoint for demonstration purposes
 API_ENDPOINT = "http://localhost:8000/"
 
 # Check if the API key is stored in session state
@@ -63,10 +59,7 @@ else:
             st.markdown(response)
 
         if "audios" in audio_response.json().keys():
-            binary_audio = base64.b64decode(audio_response.json()["audios"][0])  
-            # Write the audio to a file
-            with open("temp.wav", "wb") as f:
-                f.write(binary_audio)    
+            binary_audio = base64.b64decode(audio_response.json()["audios"][0])    
             st.audio(binary_audio, format="audio/wav", start_time=0, sample_rate=None, end_time=None, loop=False, autoplay=True)
         
         # Add user message and assistant response to chat history
