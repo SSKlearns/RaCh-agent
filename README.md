@@ -52,7 +52,7 @@ This project is a quick PoC for a Retrieval-Augmented Generation (RAG) based cha
     In a new terminal, start the Streamlit frontend:
     
     ```bash
-    streamlit run app/frontend.py
+    streamlit run chatapp.py
 
   Open your web browser and go to `http://localhost:8501` to access the chat application.
 
