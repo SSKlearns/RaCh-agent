@@ -43,7 +43,7 @@ else:
         return response.json()[-1]["content"]
 
     # Handle user input
-    if prompt := st.chat_input("What is up?"):
+    if prompt := st.chat_input("Try asking the bot what it can do, or thank it for its help!"):
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
