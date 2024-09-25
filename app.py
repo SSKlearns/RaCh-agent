@@ -134,14 +134,14 @@ def vector_db(openai_api_key, sentences):
         # of models, you can specify the size
         # of the embeddings you want returned.
         dimensions=1024,
-        openai_api_key=os.getenv("OPENAI_API_KEY")
+        openai_api_key=openai_api_key
     )
 
     persistent_client = chromadb.PersistentClient()
-    collection = persistent_client.get_or_create_collection("example_collection")
+    collection = persistent_client.get_or_create_collection("embeddings_store")
     vector_store = Chroma(
         client=persistent_client,
-        collection_name="example_collection",
+        collection_name="embeddings_store",
         embedding_function=embeddings,
     )
 
@@ -149,15 +149,14 @@ def vector_db(openai_api_key, sentences):
         Document(
             page_content=sentence,
             metadata={"source": "pdf"},
-            id=uuid4(),
+            id=str(uuid4()),
         ) for sentence in sentences
     ]
-    uuids = [str(uuid4()) for _ in range(len(documents))]
 
-    vector_store.add_documents(documents=documents, ids=uuids)
+    vector_store.add_documents(documents=documents)
     return
 
-def query_db(openai_api_key, query):
+async def query_db(openai_api_key, query):
     embeddings = OpenAIEmbeddings(
         model="text-embedding-3-large",
         dimensions=1024,
@@ -166,15 +165,25 @@ def query_db(openai_api_key, query):
     
     # Embed the user query
     query_embedding = embeddings.embed_documents([query])[0]
-
-    persistent_client = chromadb.PersistentClient()
-    collection = persistent_client.get_or_create_collection("example_collection")
-    vector_store = Chroma(
-        client=persistent_client,
-        collection_name="example_collection",
-        embedding_function=embeddings,
-    )
-    
+    try:
+        persistent_client = chromadb.PersistentClient()
+        collection = persistent_client.get_collection("embeddings_store")
+        vector_store = Chroma(
+            client=persistent_client,
+            collection_name="embeddings_store",
+            embedding_function=embeddings,
+        )
+    except Exception as e:
+        print("uploading pdf")
+        await upload_pdf("iesc111.pdf", openai_api_key)
+        persistent_client = chromadb.PersistentClient()
+        collection = persistent_client.get_collection("embeddings_store")
+        vector_store = Chroma(
+            client=persistent_client,
+            collection_name="embeddings_store",
+            embedding_function=embeddings,
+        )
+        
     # Search for top 5 most similar documents to the query
     results = vector_store.similarity_search_by_vector_with_relevance_scores(
         query_embedding,
@@ -186,6 +195,7 @@ def query_db(openai_api_key, query):
             break
     # Extract the top relevant context from the results
     context = "\n\n".join([result.page_content for result, _ in results])
+    print(context)
     return context
 
 def generate_response_with_gpt4(query, openai_api_key, model="gpt-4o-mini"):
@@ -237,12 +247,16 @@ def generate_response_with_gpt4(query, openai_api_key, model="gpt-4o-mini"):
 
     return response
 
-def detect_appreciation(openai_api_key):
+async def detect_appreciation(openai_api_key):
     return "Appreciation detected! Please frame a response that says thank you kindly. Give all credits to Sarvesh Shashikumar, for he is the one who made this possible. Ask them if they would like to hire him for an intern role and give his personal details. Sarvesh's number: 9930932102, Sarvesh's email: sarveshshashikumar0908@gmail.com"
 
 @app.post("/upload-pdf/")
-async def upload_pdf(file: UploadFile = File(...), openai_api_key: str = Form(...)):
-    content = read_document(file.file)
+async def upload_pdf(file, openai_api_key: str):
+    if type(file) == str:
+        file = file
+    else:
+        file = file.file
+    content = read_document(file)
     sentences = sentence_chunker(content)
     embeddings = get_embedding(sentences, openai_api_key)
     merged_sentences = sentence_merger(sentences, embeddings)
@@ -277,7 +291,7 @@ async def chat_endpoint(request: ChatRequest):
         function_to_call = globals().get(function_name)
         if function_to_call:
             # Call the function with the extracted arguments
-            result = function_to_call(openai_api_key=request.openai_api_key, **arguments)  # Pass the arguments as keyword arguments
+            result = await function_to_call(openai_api_key=request.openai_api_key, **arguments)  # Pass the arguments as keyword arguments
             # Create a message containing the result of the function call
             function_call_result_message = {
                 "role": "tool",
