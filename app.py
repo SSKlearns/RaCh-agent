@@ -9,7 +9,7 @@ from uuid import uuid4
 from langchain_core.documents import Document
 import chromadb
 from langchain.prompts import PromptTemplate
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, Body
 from pydantic import BaseModel
 from typing import List
 import uvicorn
@@ -17,6 +17,7 @@ import os
 import openai
 import json
 import ast
+import requests
 
 app = FastAPI()
 
@@ -28,6 +29,7 @@ class QueryRequest(BaseModel):
 class ChatRequest(BaseModel):
     messages: str
     openai_api_key: str
+    files: List[UploadFile] = File(None)
     
 tools = [
     {
@@ -46,6 +48,31 @@ tools = [
                 "required": ["order_id"],
                 "additionalProperties": False,
             },
+        }
+    },
+    # {
+    #     "type": "function",
+    #     "function": {
+    #         "name": "upload_pdf",
+    #         "description": "Upload a PDF file to the system for processing. Call this function whenever the user uploads a PDF file.",
+    #         "parameters": {
+    #             "type": "object",
+    #             "properties": {
+    #                 "file": {
+    #                     "type": "string",
+    #                     "description": "The PDF file to be uploaded.",
+    #                 },
+    #             },
+    #             "required": ["file"],
+    #             "additionalProperties": False,
+    #         },
+    #     },
+    # },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_capabilities",
+            "description": "List the capabilities of the system. Call this function whenever the user asks for the capabilities of the system."
         }
     },
     {
@@ -195,7 +222,6 @@ async def query_db(openai_api_key, query):
             break
     # Extract the top relevant context from the results
     context = "\n\n".join([result.page_content for result, _ in results])
-    print(context)
     return context
 
 def generate_response_with_gpt4(query, openai_api_key, model="gpt-4o-mini"):
@@ -246,6 +272,9 @@ def generate_response_with_gpt4(query, openai_api_key, model="gpt-4o-mini"):
     response = llm.invoke(messages)
 
     return response
+
+async def list_capabilities(openai_api_key):
+    return "The system can let you know what all it can do, detect appreciation, and answer queries based on the context of the NCERT Sound Chapter PDFs, or just have a plain nice conversation with you :). This is a fixed response. Ask me anything else!"
 
 async def detect_appreciation(openai_api_key):
     return "Appreciation detected! Please frame a response that says thank you kindly. Give all credits to Sarvesh Shashikumar, for he is the one who made this possible. Ask them if they would like to hire him for an intern role and give his personal details. Sarvesh's number: 9930932102, Sarvesh's email: sarveshshashikumar0908@gmail.com"
@@ -321,6 +350,25 @@ async def chat_endpoint(request: ChatRequest):
     print('No tool call')
     request.messages.append({"role": "assistant", "content": response.choices[0].message.content})
     return request.messages
+
+@app.post("/text-to-speech/")
+async def text_to_speech(input_dict: dict = Body(...)):
+
+    url = "https://api.sarvam.ai/text-to-speech"
+    payload = {
+        "target_language_code": "en-IN",
+        "speaker": "meera",
+        "pace": 1,
+        "inputs": [input_dict["text_content"]]
+    }
+    headers = {
+        "api-subscription-key": "b144a5a8-fac0-48f3-a901-2b3ef7830a8f",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.request("POST", url, json=payload, headers=headers)
+
+    return response.json()
         
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
