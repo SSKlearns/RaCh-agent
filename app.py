@@ -37,7 +37,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "query_db",
-            "description": "Extract a query on or related to the topic of  'sound'. Call this whenever the user asks a question about 'sound', or related, relevant topics.",
+            "description": "Extract a query on or related to the topic of 'sound'. Call this whenever the user asks a question about 'sound', or related, relevant topics.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -46,7 +46,7 @@ tools = [
                         "description": "The query the user has about 'sound'. It can be anything from the user, such as 'What is sound?' or 'How does sound work?', or anything else demanding the knowledge of physics of sound.",
                     },
                 },
-                "required": ["order_id"],
+                "required": ["query"],
                 "additionalProperties": False,
             },
         }
