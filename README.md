@@ -46,7 +46,7 @@ This project is a quick PoC for a Retrieval-Augmented Generation (RAG) based cha
     Start the FastAPI backend:
 
     ```bash
-    uvicorn app:app --host=localhost --reload
+    uvicorn app:app --host=localhost
     ```
     
     In a new terminal, start the Streamlit frontend:
